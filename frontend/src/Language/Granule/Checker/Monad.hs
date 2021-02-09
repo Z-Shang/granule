@@ -583,6 +583,8 @@ data CheckerError
     { errLoc :: Span, errTy :: Type }
   | NaturalNumberAtWrongKind
     { errLoc :: Span, errTy :: Type, errK :: Kind }
+  | InvalidPromotionError
+    { errLoc :: Span, errTy :: Type }
   deriving (Show)
 
 instance UserMsg CheckerError where
@@ -651,6 +653,7 @@ instance UserMsg CheckerError where
   title WrongLevel{} = "Type error"
   title ImpossibleKindSynthesis{} = "Kind error"
   title NaturalNumberAtWrongKind{} = "Kind error"
+  title InvalidPromotionError{} = "Type error"
 
   msg HoleMessage{..} =
     "\n   Expected type is: `" <> pretty holeTy <> "`"
@@ -956,6 +959,9 @@ instance UserMsg CheckerError where
 
   msg NaturalNumberAtWrongKind{ errTy, errK }
     = "Natural number `" <> pretty errTy <> "` is not a member of `" <> pretty errK <> "`"
+
+  msg InvalidPromotionError{ errTy }
+    = "Invalid promotion to `" <> pretty errTy <> "`"
 
   color HoleMessage{} = Blue
   color _ = Red
