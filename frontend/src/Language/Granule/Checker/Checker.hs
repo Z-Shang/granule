@@ -654,7 +654,7 @@ checkExpr defs gam pol _ ty@(Box demand tau) (Val s _ rf (Promote _ e)) = do
         _oth -> False
 
     -- determine if e is a closed term
-    hasNoFreeVars = null $ freeVars e
+    hasNoFreeVars = not (hasHole e) && null (freeVars e)
 
     -- Allow promotion if Public or not Level kinded or has free vars
     allowPromotion = do
