@@ -351,6 +351,9 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
   modify (\st -> st { patternConsumption =
                          zipWith joinConsumption consumptions (patternConsumption st) } )
 
+  -- create ghost variable context
+  ghostCtxt <- freshGhostVariableContext
+
   -- Create conjunct to capture the body expression constraints
   newConjunct
 
@@ -375,16 +378,14 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
 
   -- Check the body
   (localGam, subst', elaboratedExpr) <-
-       checkExpr defCtxt patternGam Positive True tau expr
+       checkExpr defCtxt (patternGam <> ghostCtxt) Positive True tau expr
 
   case checkLinearity patternGam localGam of
     [] -> do
       localGam <- substitute subst localGam
 
-      -- Check that our consumption context matches the binding
-      if (NoTopLevelApprox `elem` globalsExtensions ?globals)
-        then ctxtEquals s localGam patternGam
-        else ctxtApprox s localGam patternGam
+      -- Check that our consumption context approximations the binding
+      ctxtApprox s localGam (patternGam <> ghostCtxt)
 
       -- Conclude the implication
       concludeImplication s localVars
