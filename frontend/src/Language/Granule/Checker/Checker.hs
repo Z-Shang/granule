@@ -830,6 +830,9 @@ synthExpr _ gam _ (Val s _ rf (Constr _ c [])) = do
 
       (ty, _, _, constraints, coercions') <- freshPolymorphicInstance InstanceQ False tySch coercions
 
+      -- pull in all ghost variables
+      let ghostGam = allGhostVariables gam
+
       mapM_ (\ty -> do
         pred <- compileTypeConstraintToConstraint s ty
         addPredicate pred) constraints
@@ -838,7 +841,8 @@ synthExpr _ gam _ (Val s _ rf (Constr _ c [])) = do
       ty <- substitute coercions' ty
 
       let elaborated = Val s ty rf (Constr ty c [])
-      return (ty, [], [], elaborated)
+          outputCtxt = ghostGam -- []
+      return (ty, outputCtxt, [], elaborated)
 
     Nothing -> throw UnboundDataConstructor{ errLoc = s, errId = c }
 
