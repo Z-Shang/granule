@@ -18,7 +18,6 @@ import Control.Monad.State.Strict
 import Control.Monad.Except (throwError)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.Split (splitPlaces)
-import Data.List (partition)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import Data.Maybe
 import qualified Data.Text as T
@@ -31,6 +30,7 @@ import Language.Granule.Checker.Constraints
 import Language.Granule.Checker.Exhaustivity
 import Language.Granule.Checker.Effects
 import Language.Granule.Checker.Flatten
+import Language.Granule.Checker.Ghost
 import Language.Granule.Checker.Monad
 import Language.Granule.Checker.NameClash
 import Language.Granule.Checker.Patterns
@@ -355,10 +355,6 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
   -- Determine if matching on type with more than one constructor
   isPolyShaped <- polyShaped tau
 
-  -- create ghost variable context
-  -- ghostCtxt <- if isPolyShaped then freshGhostVariableContext else return []
-  ghostCtxt <- freshGhostVariableContext
-
   -- Create conjunct to capture the body expression constraints
   newConjunct
 
@@ -380,7 +376,9 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
   modify (\st -> st { equationTy = Just equationTy'' })
 
   patternGam <- substitute subst patternGam
-
+  
+  -- Introduce ambient coeffect
+  ghostCtxt <- freshGhostVariableContext
   combinedGam <- ghostVariableContextMeet $ patternGam <> ghostCtxt
 
   -- Check the body
@@ -392,7 +390,8 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
       localGam <- substitute subst localGam
 
       -- Check that our consumption context approximations the binding
-      ctxtApprox s localGam (patternGam <> ghostCtxt)
+      debugM "checkEquation" (pretty localGam ++ " <: " ++ pretty combinedGam)
+      ctxtApprox s localGam combinedGam
 
       -- Conclude the implication
       concludeImplication s localVars
@@ -646,16 +645,6 @@ checkExpr defs gam pol _ ty@(Box demand tau) (Val s _ rf (Promote _ e)) = do
     return (gam'' <> gamGhost, substFinal, elaborated)
 
   where
-
-    -- Calculate whether a type assumption is level kinded
-    isLevelKinded = do
-      (k,_subst,_) <- synthKind (getSpan e) demand
-      return $ case k of
-        TyCon (internalName -> "Level") -> True
-        TyApp (TyCon (internalName -> "Interval"))
-          (TyCon (internalName -> "Level")) -> True
-        _oth -> False
-
     -- Determine if the level type is Public
     isLevelPublic =
       case demand of
@@ -667,7 +656,7 @@ checkExpr defs gam pol _ ty@(Box demand tau) (Val s _ rf (Promote _ e)) = do
 
     -- Allow promotion if Public or not Level kinded or has free vars
     allowPromotion = do
-      levelKind <- isLevelKinded
+      levelKind <- isLevelKinded (getSpan e) demand
       return $ not levelKind || isLevelPublic || not hasNoFreeVars
 
     -- Throw type error when we try to promote at a non-Public level
@@ -857,8 +846,7 @@ synthExpr _ gam _ (Val s _ rf (Constr _ c [])) = do
 
       (ty, _, _, constraints, coercions') <- freshPolymorphicInstance InstanceQ False tySch coercions
 
-      -- pull in all ghost variables
-      let ghostGam = allGhostVariables gam
+      -- -- pull in all gh,lGhostVariables gam
 
       mapM_ (\ty -> do
         pred <- compileTypeConstraintToConstraint s ty
@@ -868,7 +856,7 @@ synthExpr _ gam _ (Val s _ rf (Constr _ c [])) = do
       ty <- substitute coercions' ty
 
       let elaborated = Val s ty rf (Constr ty c [])
-          outputCtxt = ghostGam -- []
+          outputCtxt = [(mkId ".var.ghost", Ghost (TyGrade Nothing 1))]  -- ghostGam -- []
       return (ty, outputCtxt, [], elaborated)
 
     Nothing -> throw UnboundDataConstructor{ errLoc = s, errId = c }
@@ -1092,6 +1080,7 @@ synthExpr defs gam _ (Val s _ rf (Var _ x)) = do
        return (ty, [(x, Discharged ty (TyGrade (Just k) 1))], subst, elaborated)
 
      Just (Ghost c) -> do
+       --TODO: not really needed.s
        (k, subst, _) <- synthKind s c
        let elaborated = Val s ghostType rf (Var ghostType x)
        debugM "synthExpr[Var] ghost" (pretty k <> ", " <> pretty c)
@@ -1946,23 +1935,3 @@ programSynthesise ctxt vars ty patternss = do
         debugM "Synthesiser" $ "Synthesised: " <> pretty t
         return (pattern, t)
 
-allGhostVariables :: Ctxt Assumption -> Ctxt Assumption
-allGhostVariables = filter isGhost
-
-freshGhostVariableContext :: Checker (Ctxt Assumption)
-freshGhostVariableContext = do
-  return [(mkId ".var.ghost", Ghost (tyCon "Unused"))]
-
-ghostVariableContextMeet :: Ctxt Assumption -> Checker (Ctxt Assumption)
-ghostVariableContextMeet env =
-  let (ghosts,env') = partition isGhost env
-      newGrade      = foldr (TyInfix TyOpMeet) (tyCon "Unused") $ map ((\(Ghost ce) -> ce) . snd) ghosts
-  in return $ (mkId ".var.ghost", Ghost newGrade) : env'
-  -- let (ghosts,env') = partition isGhost env
-  --     newGrade      = foldr1 (TyInfix TyOpMeet) $ map ((\(Ghost ce) -> ce) . snd) ghosts
-  -- -- if there's no ghost variable in env, don't add one
-  -- in if null ghosts then return env' else return $ (mkId ".var.ghost", Ghost newGrade) : env'
-
-isGhost :: (a, Assumption) -> Bool
-isGhost (_, Ghost _) = True
-isGhost _ = False
