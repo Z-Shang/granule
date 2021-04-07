@@ -355,6 +355,16 @@ symGradePlus (SBorrow a) (SBorrow b) = return $ SBorrow (a `smax` b `smax` liter
 
 symGradePlus s t = solverError $ cannotDo "plus" s t
 
+-- | Converge (#) operation
+symGradeConverge :: SGrade -> SGrade -> Symbolic SGrade
+symGradeConverge (SLevel lev1) (SLevel lev2) = return $
+    ite (lev1 .== literal privateRepresentation)
+        (SLevel $ literal privateRepresentation)
+      $ ite (lev2 .== literal privateRepresentation)
+            (SLevel $ literal privateRepresentation)
+            (SLevel $ lev1 `smax` lev2)
+symGradeConverge s1 s2 = symGradeTimes s1 s2
+
 -- | Times operation on symbolic grades
 symGradeTimes :: SGrade -> SGrade -> Symbolic SGrade
 symGradeTimes (SNat n1) (SNat n2) = return $ SNat (n1 * n2)
