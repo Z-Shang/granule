@@ -357,6 +357,7 @@ compileCoeffect (TyCon name) (TyCon (internalName -> "Level")) _ = do
             "Unused"  -> unusedRepresentation
             "Private" -> privateRepresentation
             "Public"  -> publicRepresentation
+            "Dunno"   -> dunnoRepresentation
             c         -> error $ "Cannot compile " <> show c
 
   return (SLevel . fromInteger . toInteger $ n, sTrue)
