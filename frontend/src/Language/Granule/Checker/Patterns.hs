@@ -240,7 +240,7 @@ ctxtFromTypedPattern' outerBoxTy _ pos ty p@(PConstr s _ rf dataC ps) cons = do
           debugM "ctxt" $ "### drewritAndSpec = " <> show dataConstructorIndexRewrittenAndSpecialised <> "\n"
 
           (bindingContexts, _, bs, us, elabPs, consumptionsOut) <-
-            ctxtFromTypedPatterns' outerBoxTy s dataConstructorIndexRewrittenAndSpecialised ps (replicate (length ps) cons)
+            ctxtFromTypedPatterns' outerBoxTy s pos dataConstructorIndexRewrittenAndSpecialised ps (replicate (length ps) cons)
           let consumptionOut = foldr meetConsumption Full consumptionsOut
 
           -- Combine the substitutions

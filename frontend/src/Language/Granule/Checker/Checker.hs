@@ -389,10 +389,11 @@ checkEquation defCtxt id (Equation s name () rf pats expr) tys@(Forall _ foralls
   case checkLinearity patternGam localGam of
     [] -> do
       localGam <- substitute subst localGam
-
-      -- Check that our consumption context approximations the binding
-      debugM "checkEquation" (pretty localGam ++ " <: " ++ pretty combinedGam)
-      ctxtApprox s localGam combinedGam
+      -- Check that our consumption context matches the binding
+      if (NoTopLevelApprox `elem` globalsExtensions ?globals)
+        then ctxtEquals s localGam combinedGam
+        else ctxtApprox s localGam combinedGam
+      -- ctxtApprox s localGam combinedGam
 
       -- Conclude the implication
       concludeImplication s localVars
@@ -882,7 +883,6 @@ synthExpr defs gam pol (Case s _ rf guardExpr cases) = do
 
   -- All branches must be possible
   checkGuardsForImpossibility s $ mkId "case"
-
   popCaseFrame
 
   let (branchTys, branchCtxtsAndSubsts, elaboratedCases) = unzip3 branchTysAndCtxtsAndSubsts
