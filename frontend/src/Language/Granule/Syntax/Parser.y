@@ -109,6 +109,8 @@ import Language.Granule.Utils hiding (mkSpan)
     '!'   { TokenBang _ }
     '∗'   { TokenStar _ }
     '&'   { TokenBorrow _ }
+    '[|'  { TokenCodeLeft _ }
+    '|]'  { TokenCodeRight _ }
 
 %right '∘'
 %right in
@@ -333,6 +335,7 @@ Type :: { Type }
   | TyAtom '[' Coeffect ']'        { Box $3 $1 }
   | TyAtom '[' ']'                 { Box (TyInfix TyOpInterval (TyGrade (Just extendedNat) 0) infinity) $1 }
   | TyAtom '<' Effect '>'          { Diamond $3 $1 }
+  | '`' '(' Type ')'               { Box (TyCon $ mkId "QCode") $3 }
   | case Type of TyCases { TyCase $2 $4 }
 
 TyApp :: { Type }
@@ -557,6 +560,7 @@ Hole :: { Expr () () }
 
 Atom :: { Expr () () }
   : '(' Expr ')'              { $2 }
+  | '[|' Expr '|]'            {% (mkSpan (getPos $1, getPos $3)) >>= \sp -> return $ App sp () False (Val sp () False (Var () (mkId "box"))) $2 }
   | INT                       {% let (TokenInt _ x) = $1
                                  in (mkSpan $ getPosToSpan $1)
                                     >>= \sp -> return $ Val sp () False $ NumInt x }

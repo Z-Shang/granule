@@ -60,6 +60,8 @@ data ValueF ev a value expr =
     | StringLiteralF Text
     -- Extensible part
     | ExtF a ev
+    -- Boxed code
+    | CodeF a expr
    deriving (Generic, Eq, Rp.Data)
 
 deriving instance (Show ev, Show a, Show value, Show expr)
@@ -82,8 +84,9 @@ pattern NumFloat n = (ExprFix2 (NumFloatF n))
 pattern CharLiteral ch = (ExprFix2 (CharLiteralF ch))
 pattern StringLiteral str = (ExprFix2 (StringLiteralF str))
 pattern Ext a extv = (ExprFix2 (ExtF a extv))
+pattern Code a ex = (ExprFix2 (CodeF a ex))
 {-# COMPLETE Abs, Promote, Pure, Constr, Var, NumInt,
-             NumFloat, CharLiteral, StringLiteral, Ext #-}
+             NumFloat, CharLiteral, StringLiteral, Ext, Code #-}
 
 -- | Expressions (computations) in Granule (with `v` extended values
 -- | and annotations `a`).
@@ -148,6 +151,7 @@ instance Functor (Value ev) where
   fmap f (NumFloat n)      = NumFloat n
   fmap f (CharLiteral c)   = CharLiteral c
   fmap f (StringLiteral s) = StringLiteral s
+  fmap f (Code a e)        = Code (f a) (fmap f e)
 
 instance Functor (Expr ev) where
   fmap f (App s a rf e1 e2) = App s (f a) rf (fmap f e1) (fmap f e2)
@@ -242,10 +246,12 @@ instance Term (Value ev a) where
     freeVars CharLiteral{}   = []
     freeVars StringLiteral{} = []
     freeVars Ext{} = []
+    freeVars (Code _ e)    = freeVars e
 
     hasHole (Abs _ _ _ e) = hasHole e
     hasHole (Pure _ e)    = hasHole e
     hasHole (Promote _ e) = hasHole e
+    hasHole (Code _ e)    = hasHole e
     hasHole _             = False
 
     isLexicallyAtomic Abs{} = False
@@ -264,6 +270,7 @@ instance Substitutable Value where
     subst es _ v@CharLiteral{}   = Val (nullSpanInFile $ getSpan es) (getFirstParameter v) False v
     subst es _ v@StringLiteral{} = Val (nullSpanInFile $ getSpan es) (getFirstParameter v) False v
     subst es _ v@Ext{} = Val (nullSpanInFile $ getSpan es) (getFirstParameter v) False v
+    subst es v (Code a e)        = error "not yet implemented"
 
 instance Monad m => Freshenable m (Value v a) where
     freshen (Abs a p t e) = do
@@ -297,6 +304,8 @@ instance Monad m => Freshenable m (Value v a) where
     freshen v@CharLiteral{} = return v
     freshen v@StringLiteral{} = return v
     freshen v@Ext{} = return v
+
+    freshen (Code a e) = error "not yet implemented"
 
 freshenId :: Monad m => Id -> Freshener m Id
 freshenId v = do
