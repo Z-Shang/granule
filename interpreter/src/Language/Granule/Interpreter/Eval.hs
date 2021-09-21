@@ -423,6 +423,7 @@ builtIns =
   , (mkId "lengthFloatArray",  Ext () $ Primitive lengthFloatArray)
   , (mkId "readFloatArray",  Ext () $ Primitive readFloatArray)
   , (mkId "writeFloatArray",  Ext () $ Primitive writeFloatArray)
+  , (mkId "box", Ext () $ Primitive box)
   ]
   where
     forkLinear :: (?globals :: Globals) => Ctxt RValue -> RValue -> RValue
@@ -552,6 +553,9 @@ builtIns =
       Ext () $ Primitive $ \(NumFloat v) ->
       Promote () (Val nullSpan () False $ Ext () $ FloatArray $ unsafePerformIO (do _ <- MA.writeArray arr i v; return arr))
 
+    box :: RValue -> RValue
+    box = error $ "Not yet implemented"
+
 evalDefs :: (?globals :: Globals) => Ctxt RValue -> [Def (Runtime ()) ()] -> IO (Ctxt RValue)
 evalDefs ctxt [] = return ctxt
 evalDefs ctxt (Def _ var _ (EquationList _ _ _ [Equation _ _ _ rf [] e]) _ : defs) = do
@@ -598,6 +602,7 @@ instance RuntimeRep Value where
   toRuntimeRep (Var a x) = Var a x
   toRuntimeRep (NumInt x) = NumInt x
   toRuntimeRep (NumFloat x) = NumFloat x
+  toRuntimeRep (Code a e) = error "not yet implemented"
 
 eval :: (?globals :: Globals) => AST () () -> IO (Maybe RValue)
 eval (AST dataDecls defs _ _ _) = do

@@ -388,6 +388,9 @@ compileCoeffect (TyCon name) (TyCon (internalName -> "Sec")) _ = do
 compileCoeffect (TyCon name) (TyCon (internalName -> "Uniqueness")) _ = do
   return (SUnique, sTrue)
 
+compileCoeffect (TyCon name) (TyCon (internalName -> "QuotedCode")) _ = do
+  return (SPoint, sTrue)
+
 -- TODO: I think the following two cases are deprecatd: (DAO 12/08/2019)
 compileCoeffect (TyApp (TyCon (internalName -> "Level")) (TyInt n)) (isProduct -> Just (TyCon (internalName -> "Level"), t2)) vars = do
   (g, p) <- compileCoeffect (TyInt 1) t2 vars
@@ -479,6 +482,7 @@ compileCoeffect (TyGrade k' 0) k vars = do
         "OOZ"       -> return (SOOZ sFalse, sTrue)
         "LNL"       -> return (SLNL (literal zeroRep), sTrue)
         "Borrowing" -> return (SBorrow (literal omegaRepresentation), sTrue)
+        "QuotedCode"-> return (SPoint, sTrue)
         _           -> solverError $ "I don't know how to compile a 0 for " <> pretty k
     otherK | otherK == extendedNat ->
       return (SExtNat 0, sTrue)
@@ -514,6 +518,7 @@ compileCoeffect (TyGrade k' 1) k vars = do
         "OOZ"       -> return (SOOZ sTrue, sTrue)
         "LNL"       -> return (SLNL (literal oneRep), sTrue)
         "Borrowing" -> return (SBorrow (literal oneRepresentation), sTrue)
+        "QuotedCode"-> return (SPoint, sTrue)
         _           -> solverError $ "I don't know how to compile a 1 for " <> pretty k
 
     otherK | otherK == extendedNat ->

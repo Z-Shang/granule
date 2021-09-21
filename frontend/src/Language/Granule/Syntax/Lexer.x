@@ -74,6 +74,8 @@ tokens :-
   "λ"                           { \p s -> TokenLambda p }
   \[                            { \p s -> TokenBoxLeft p }
   \]                            { \p s -> TokenBoxRight p }
+  "[|"                          { \p s -> TokenCodeLeft p }
+  "|]"                          { \p s -> TokenCodeRight p }
   [\+]                          { \p s -> TokenAdd p }
   [\-]                          { \p s -> TokenSub p }
   [\*]                          { \p s -> TokenMul p }
@@ -158,6 +160,8 @@ data Token
   | TokenSig    AlexPosn
   | TokenBoxLeft AlexPosn
   | TokenBoxRight AlexPosn
+  | TokenCodeLeft AlexPosn
+  | TokenCodeRight AlexPosn
   | TokenLBrace   AlexPosn
   | TokenRBrace   AlexPosn
   | TokenLangle   AlexPosn

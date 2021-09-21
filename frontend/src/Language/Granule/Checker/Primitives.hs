@@ -98,6 +98,10 @@ typeConstructors =
 
     -- Arrays
     , (mkId "FloatArray", (Type 0, [], False))
+    
+    -- Boxed Codes
+    , (mkId "QuotedCode", (kcoeffect, [], False))
+    , (mkId "QCode", (tyCon "QuotedCode", [], False))
     ]
 
 -- Various predicates and functions on type operators
@@ -524,6 +528,15 @@ writeFloatArray = BUILTIN
 
 lengthFloatArray : FloatArray [Unique] -> (Int, FloatArray [Unique])
 lengthFloatArray = BUILTIN
+
+--------------------------------------------------------------------------------
+-- Quoted Code
+--------------------------------------------------------------------------------
+
+box
+  : forall {a : Type, k : Coeffect, c : k}
+  . a -> `(a)
+box = BUILTIN
 |]
 
 
